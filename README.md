@@ -10,10 +10,13 @@ resource "local_file" "name" {
  
 }
 
-resource => block name
-local => provider ---
+Parts of terraform file
+
+
+1. resource => block name
+2. local => provider ---
                      | Resource type
-file => resource  ---
+3. file => resource  ---
 
 
 
