@@ -1,6 +1,6 @@
-# Terraform  (IOC)
+# Terraform  (IAC)
 
-Infrastructure Of Code
+Infrastructure as Code
 
 Structure :
 
