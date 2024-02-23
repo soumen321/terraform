@@ -2,6 +2,14 @@
 
 Infrastructure Of Code
 
+Structure :
+
+resource "provider_type" "name" {
+ //attributes
+ key = value
+}
+
+
 Play with 4 commands
 
 1. terraform init
@@ -13,4 +21,6 @@ Play with 4 commands
 
 v1 - Basic commands , create a file and write a text inside it
 
-v2  - Run nginx using terraform with docker 
+v2 - Install and Run nginx with docker 
+
+
