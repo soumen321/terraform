@@ -2,7 +2,8 @@
 
 Infrastructure as Code
 
-Structure :
+Structure 
+-------------------------
 
 resource "local_file" "name" {
 
@@ -11,17 +12,16 @@ resource "local_file" "name" {
 }
 
 Parts of terraform file
-
+-------------------------
 
 1. resource => block name
-2. local => provider ---
-                     | Resource type
+2. local => provider --- <br>
+                     | Resource type <br>
 3. file => resource  ---
 
 
-
-
 Play with 4 commands
+--------------------
 
 1. terraform init
 2. terraform validate
