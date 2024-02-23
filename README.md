@@ -4,13 +4,18 @@ Infrastructure as Code
 
 Structure :
 
-resource "provider_type" "name" {
-
- //attributes
+resource "local_file" "name" {
 
  key = value
  
 }
+
+resource => block name
+local => provider ---
+                     | Resource type
+file => resource  ---
+
+
 
 
 Play with 4 commands
