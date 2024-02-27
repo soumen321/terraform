@@ -1,12 +1,3 @@
-terraform {
-    required_providers {
-        aws = {
-            source  = "hashicorp/aws"
-            version = "~> 4.0"
-        }
-    }
-}
-
 # define provider
 provider "aws" {
     access_key = var.aws_access_key
