@@ -1,4 +1,8 @@
 
+provider "aws" {
+  region = "us-east-2"
+}
+
 module "ec2" {
   source        = "./modules"
   aws_region    = "us-east-2"
