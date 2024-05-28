@@ -13,7 +13,7 @@ Step To Follow:
    e) S3 object Creation   
    f) Website Configuration
    
-4. Follow the Terraform DOcumentation   
+4. Follow the Terraform Documentation   
 
 
 
