@@ -8,7 +8,7 @@ resource "aws_instance" "ec2" {
   tags = {
     name = "Aman-EC2"
   }
-  key_name = "AmanPathak"
+  key_name = "pipeline"
   
   metadata_options {
     http_tokens = "required"
