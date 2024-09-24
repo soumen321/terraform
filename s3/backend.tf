@@ -1,8 +1,8 @@
 terraform {
   backend "s3" {
-    bucket         = "my-ews-baket1"
+    bucket         = "soumen321-ews-baket1"
     region         = "us-east-1"
-    key            = "Non-Modularized/Module-S3-Bucket/terraform.tfstate"
+    key            = "S3-Bucket/terraform.tfstate"
     dynamodb_table = "Lock-Files"
     encrypt = true
   }
