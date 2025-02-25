@@ -1,0 +1,64 @@
+{
+	"resources to monitor": {
+		"disk": {
+			"appli": {
+				"path": "/appli",		
+				"device": "mapper/clipvg-appli",
+				"fstype": "ext4"
+			},
+			"logs": {
+				"path": "/logs",
+				"device": "mapper/clipvg-logslv",
+				"fstype": "ext4"
+			},
+
+			"softs": {
+				"path": "/softs",
+				"device": "mapper/clipvg-softslv",
+				"fstype": "ext4"
+			},
+			"rootfs": {
+				"path":"/",		
+				"device": "nvme0n1p2",
+				"fstype": "xis"
+			}
+		}
+	},
+	"disk used percent": {
+		"MINOR": {
+			"Name": "MINOR Disk utilization",
+			"ComparisonOperator": "GreaterThanOrEqualToThreshold",
+			"EvaluationPeriods": 1,
+			"MetricName": "disk used percent",
+			"Namespace": "CWAgent",
+			"Period": 60,
+			"Statistic": "Maximum",
+			"Threshold": 80.0,
+			"ActionsEnabled": false
+		},
+		"MAJOR": {
+			"Name": "MAJOR Disk utilization",
+			"ComparisonOperator": "Greater ThanOrEqualToThreshold",
+			"EvaluationPeriods": 1,
+			"MetricName": "disk used percent",
+			"Namespace": "CWAgent",
+			"Period":60,
+			"Statistic": "Maximum",
+			"Threshold": 90.0,
+			"ActionsEnabled": true,
+			"AlarmActions": ["MSD Infra Topic" O_Infra_Topic"]
+		},
+		"CRITICAL": {
+			"Name": "CRITICAL- Disk utilization",
+			"ComparisonOperator": "GreaterThanOrEqualToThreshold",
+			"EvaluationPeriods": 1,
+			"MetricName": "disk used percent",
+			"Namespace": "CWAgent",
+			"Period": "60",
+			"Statistic": "Maximum",
+			"Threshold": "95.0",
+			"ActionsEnabled": false,
+		}
+	}	
+}	
+	
