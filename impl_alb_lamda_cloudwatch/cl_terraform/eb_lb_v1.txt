@@ -1,0 +1,491 @@
+terraform/
+├── main.tf
+├── variables.tf
+├── outputs.tf
+├── terraform.tfvars
+├── permission/
+│   ├── lambda_policy.json
+│   ├── eventbridge_policy.json
+└── modules/
+    ├── eventbridge/
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    ├── lambda/
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    └── iam/
+        ├── main.tf
+        ├── variables.tf
+        └── outputs.tf
+
+
+1. Permission JSON Files
+Define the IAM policies in JSON files under the permission folder.
+
+permission/lambda_policy.json
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": "arn:aws:s3:::${s3_bucket}/${s3_key}"
+    }
+  ]
+}
+
+permission/eventbridge_policy.json
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "events:PutRule",
+        "events:PutTargets",
+        "events:DescribeRule",
+        "events:RemoveTargets",
+        "events:DeleteRule"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+
+2. Root Module
+------------------------
+main.tf
+
+
+provider "aws" {
+  region = var.aws_region
+}
+
+module "lambda" {
+  source = "./modules/lambda"
+
+  lambda_function_name = var.lambda_function_name
+  s3_bucket           = var.s3_bucket
+  s3_key              = var.s3_key
+  handler             = var.handler
+  runtime             = var.runtime
+  role_arn            = module.iam.lambda_role_arn
+}
+
+module "eventbridge" {
+  source = "./modules/eventbridge"
+
+  eventbridge_name          = var.eventbridge_name
+  asg_name_prefix           = var.asg_name_prefix
+  lambda_arn                = module.lambda.lambda_arn
+  cloudwatch_status_rule    = var.cloudwatch_status_rule
+  clip_ssmlambda_trigger_rule = var.clip_ssmlambda_trigger_rule
+}
+
+module "iam" {
+  source = "./modules/iam"
+
+  lambda_function_name = var.lambda_function_name
+  s3_bucket           = var.s3_bucket
+  s3_key              = var.s3_key
+}
+
+--------------------------
+
+variables.tf
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+}
+
+variable "eventbridge_name" {
+  description = "Name of the EventBridge rule for ASG"
+  type        = string
+}
+
+variable "asg_name_prefix" {
+  description = "Prefix of the ASG names to trigger the EventBridge rule"
+  type        = list(string)
+}
+
+variable "lambda_function_name" {
+  description = "Name of the Lambda function"
+  type        = string
+}
+
+variable "s3_bucket" {
+  description = "S3 bucket where the Lambda code is stored"
+  type        = string
+}
+
+variable "s3_key" {
+  description = "S3 key for the Lambda code zip file"
+  type        = string
+}
+
+variable "handler" {
+  description = "Lambda function handler"
+  type        = string
+}
+
+variable "runtime" {
+  description = "Lambda function runtime"
+  type        = string
+}
+
+variable "cloudwatch_status_rule" {
+  description = "EventBridge rule for CloudWatch Alarm State Change"
+  type = object({
+    name          = string
+    alarm_prefixes = list(string)
+  })
+}
+
+variable "clip_ssmlambda_trigger_rule" {
+  description = "EventBridge rule for SSM Lambda trigger"
+  type = object({
+    name          = string
+    alarm_prefixes = list(string)
+    target_lambda = string
+    input_transformer = map(string)
+  })
+}
+
+----------------------------------
+
+outputs.tf
+
+output "lambda_arn" {
+  value = module.lambda.lambda_arn
+}
+
+output "eventbridge_arn" {
+  value = module.eventbridge.eventbridge_arn
+}
+
+output "cloudwatch_status_rule_arn" {
+  value = module.eventbridge.cloudwatch_status_rule_arn
+}
+
+output "clip_ssmlambda_trigger_rule_arn" {
+  value = module.eventbridge.clip_ssmlambda_trigger_rule_arn
+}
+
+-----------------------------------------
+
+terraform.tfvars
+
+
+aws_region          = "us-west-2"
+eventbridge_name    = "cl-regenerate-alarm"
+asg_name_prefix     = ["pop-lab", "clip-lab"]
+lambda_function_name = "manage-cloudwatch-alarm"
+s3_bucket           = "your-s3-bucket-name"
+s3_key              = "manage_cloudwatch_alarm.zip"
+handler             = "main.handler"
+runtime             = "python3.9"
+
+cloudwatch_status_rule = {
+  name           = "Cloudwatch_status_rule"
+  alarm_prefixes = ["pop-lab-eai", "clip-lab-infra"]
+}
+
+clip_ssmlambda_trigger_rule = {
+  name           = "clip-ssmlambda-trigger-rule"
+  alarm_prefixes = ["pop-lab-eai", "clip-lab-infra"]
+  target_lambda  = "memory-usage-detection-lab"
+  input_transformer = {
+    InstanceId  = "$.detail.instance-id"
+    alarmName   = "$.detail.alarmName"
+    metricName  = "$.detail.metricName"
+    stateValue  = "$.detail.state.value"
+  }
+}
+
+--------------------------------------------------
+
+3. Lambda Module
+
+
+modules/lambda/main.tf
+
+
+resource "aws_lambda_function" "this" {
+  function_name = var.lambda_function_name
+  s3_bucket     = var.s3_bucket
+  s3_key        = var.s3_key
+  handler       = var.handler
+  runtime       = var.runtime
+  role          = var.role_arn
+}
+
+output "lambda_arn" {
+  value = aws_lambda_function.this.arn
+}
+
+-----------------------------
+
+modules/lambda/variables.tf
+
+variable "lambda_function_name" {
+  description = "Name of the Lambda function"
+  type        = string
+}
+
+variable "s3_bucket" {
+  description = "S3 bucket where the Lambda code is stored"
+  type        = string
+}
+
+variable "s3_key" {
+  description = "S3 key for the Lambda code zip file"
+  type        = string
+}
+
+variable "handler" {
+  description = "Lambda function handler"
+  type        = string
+}
+
+variable "runtime" {
+  description = "Lambda function runtime"
+  type        = string
+}
+
+variable "role_arn" {
+  description = "IAM role ARN for the Lambda function"
+  type        = string
+}
+
+----------------------------------------
+
+4. EventBridge Module
+
+modules/eventbridge/main.tf
+
+# EventBridge rule for ASG
+resource "aws_cloudwatch_event_rule" "asg_rule" {
+  name        = var.eventbridge_name
+  description = "EventBridge rule for ASG name prefixes"
+
+  event_pattern = jsonencode({
+    source      = ["aws.autoscaling"]
+    detail-type = ["EC2 Instance Launch Successful"]
+    detail = {
+      AutoScalingGroupName = [
+        for prefix in var.asg_name_prefix : {
+          prefix = prefix
+        }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "asg_target" {
+  rule      = aws_cloudwatch_event_rule.asg_rule.name
+  target_id = "LambdaTarget"
+  arn       = var.lambda_arn
+
+  input = jsonencode({
+    event_type = "Matched event"
+  })
+}
+
+# EventBridge rule for CloudWatch Alarm State Change
+resource "aws_cloudwatch_event_rule" "cloudwatch_status_rule" {
+  name        = var.cloudwatch_status_rule.name
+  description = "EventBridge rule for CloudWatch Alarm State Change"
+
+  event_pattern = jsonencode({
+    source      = ["aws.cloudwatch"]
+    detail-type = ["CloudWatch Alarm State Change"]
+    detail = {
+      alarmName = [
+        for prefix in var.cloudwatch_status_rule.alarm_prefixes : {
+          prefix = prefix
+        }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "cloudwatch_status_target" {
+  rule      = aws_cloudwatch_event_rule.cloudwatch_status_rule.name
+  target_id = "LambdaTarget"
+  arn       = var.lambda_arn
+
+  input = jsonencode({
+    event_type = "Matched event"
+  })
+}
+
+# EventBridge rule for SSM Lambda trigger
+resource "aws_cloudwatch_event_rule" "clip_ssmlambda_trigger_rule" {
+  name        = var.clip_ssmlambda_trigger_rule.name
+  description = "EventBridge rule for SSM Lambda trigger"
+
+  event_pattern = jsonencode({
+    source      = ["aws.cloudwatch"]
+    detail-type = ["CloudWatch Alarm State Change"]
+    detail = {
+      alarmName = [
+        for prefix in var.clip_ssmlambda_trigger_rule.alarm_prefixes : {
+          prefix = prefix
+        }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "clip_ssmlambda_trigger_target" {
+  rule      = aws_cloudwatch_event_rule.clip_ssmlambda_trigger_rule.name
+  target_id = "LambdaTarget"
+  arn       = var.lambda_arn
+
+  input_transformer {
+    input_paths = var.clip_ssmlambda_trigger_rule.input_transformer
+    input_template = <<EOT
+{
+      "InstanceId": <InstanceId>,
+      "alarmName": <alarmName>,
+      "metricName": <metricName>,
+      "stateValue": <stateValue>
+}
+EOT
+  }
+}
+
+output "eventbridge_arn" {
+  value = aws_cloudwatch_event_rule.asg_rule.arn
+}
+
+output "cloudwatch_status_rule_arn" {
+  value = aws_cloudwatch_event_rule.cloudwatch_status_rule.arn
+}
+
+output "clip_ssmlambda_trigger_rule_arn" {
+  value = aws_cloudwatch_event_rule.clip_ssmlambda_trigger_rule.arn
+}
+
+--------------------------------------------------------------
+
+modules/eventbridge/variables.tf
+
+variable "eventbridge_name" {
+  description = "Name of the EventBridge rule for ASG"
+  type        = string
+}
+
+variable "asg_name_prefix" {
+  description = "Prefix of the ASG names to trigger the EventBridge rule"
+  type        = list(string)
+}
+
+variable "lambda_arn" {
+  description = "ARN of the Lambda function to be triggered"
+  type        = string
+}
+
+variable "cloudwatch_status_rule" {
+  description = "EventBridge rule for CloudWatch Alarm State Change"
+  type = object({
+    name          = string
+    alarm_prefixes = list(string)
+  })
+}
+
+variable "clip_ssmlambda_trigger_rule" {
+  description = "EventBridge rule for SSM Lambda trigger"
+  type = object({
+    name          = string
+    alarm_prefixes = list(string)
+    target_lambda = string
+    input_transformer = map(string)
+  })
+}
+
+--------------------------------------------------
+
+5. IAM Module
+
+modules/iam/main.tf
+
+resource "aws_iam_role" "lambda_role" {
+  name = "${var.lambda_function_name}-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "lambda_policy" {
+  name = "${var.lambda_function_name}-policy"
+  role = aws_iam_role.lambda_role.id
+
+  policy = file("${path.module}/../../permission/lambda_policy.json")
+}
+
+resource "aws_iam_role_policy" "eventbridge_policy" {
+  name = "${var.lambda_function_name}-eventbridge-policy"
+  role = aws_iam_role.lambda_role.id
+
+  policy = file("${path.module}/../../permission/eventbridge_policy.json")
+}
+
+output "lambda_role_arn" {
+  value = aws_iam_role.lambda_role.arn
+}
+
+------------------------------------------
+
+modules/iam/variables.tf
+
+variable "lambda_function_name" {
+  description = "Name of the Lambda function"
+  type        = string
+}
+
+variable "s3_bucket" {
+  description = "S3 bucket where the Lambda code is stored"
+  type        = string
+}
+
+variable "s3_key" {
+  description = "S3 key for the Lambda code zip file"
+  type        = string
+}
+
+
+-----------------------------------------
+
+
+
+
+
+
+
