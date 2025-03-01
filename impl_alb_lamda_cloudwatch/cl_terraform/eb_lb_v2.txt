@@ -609,6 +609,153 @@ module "iam" {
 }
 
 
+Event bridge
+=====================
+modules/eventbridge/main.tf
+
+# EventBridge rule for ASG events
+resource "aws_cloudwatch_event_rule" "asg_rule" {
+  name        = var.eventbridge_name
+  description = "EventBridge rule for ASG name prefixes"
+
+  event_pattern = jsonencode({
+    source      = ["aws.autoscaling"]
+    detail-type = ["EC2 Instance Launch Successful"]
+    detail = {
+      AutoScalingGroupName = [
+        for prefix in var.asg_name_prefix : {
+          prefix = prefix
+        }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "asg_target" {
+  rule      = aws_cloudwatch_event_rule.asg_rule.name
+  target_id = "LambdaTarget"
+  arn       = var.lambda_arn
+
+  input = jsonencode({
+    event_type = "Matched event"
+  })
+}
+
+# EventBridge rule for CloudWatch Alarm State Change
+resource "aws_cloudwatch_event_rule" "cloudwatch_status_rule" {
+  name        = var.cloudwatch_status_rule.name
+  description = "EventBridge rule for CloudWatch Alarm State Change"
+
+  event_pattern = jsonencode({
+    source      = ["aws.cloudwatch"]
+    detail-type = ["CloudWatch Alarm State Change"]
+    detail = {
+      alarmName = [
+        for prefix in var.cloudwatch_status_rule.alarm_prefixes : {
+          prefix = prefix
+        }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "cloudwatch_status_target" {
+  rule      = aws_cloudwatch_event_rule.cloudwatch_status_rule.name
+  target_id = "LambdaTarget"
+  arn       = var.lambda_arn
+
+  input = jsonencode({
+    event_type = "Matched event"
+  })
+}
+
+# EventBridge rule for SSM Lambda trigger
+resource "aws_cloudwatch_event_rule" "clip_ssmlambda_trigger_rule" {
+  name        = var.clip_ssmlambda_trigger_rule.name
+  description = "EventBridge rule for SSM Lambda trigger"
+
+  event_pattern = jsonencode({
+    source      = ["aws.cloudwatch"]
+    detail-type = ["CloudWatch Alarm State Change"]
+    detail = {
+      alarmName = [
+        for prefix in var.clip_ssmlambda_trigger_rule.alarm_prefixes : {
+          prefix = prefix
+        }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "clip_ssmlambda_trigger_target" {
+  rule      = aws_cloudwatch_event_rule.clip_ssmlambda_trigger_rule.name
+  target_id = "LambdaTarget"
+  arn       = var.lambda_arn
+
+  input_transformer {
+    input_paths = var.clip_ssmlambda_trigger_rule.input_transformer
+    input_template = <<EOT
+{
+      "InstanceId": <InstanceId>,
+      "alarmName": <alarmName>,
+      "metricName": <metricName>,
+      "stateValue": <stateValue>
+}
+EOT
+  }
+}
+
+output "eventbridge_arn" {
+  value = aws_cloudwatch_event_rule.asg_rule.arn
+}
+
+output "cloudwatch_status_rule_arn" {
+  value = aws_cloudwatch_event_rule.cloudwatch_status_rule.arn
+}
+
+output "clip_ssmlambda_trigger_rule_arn" {
+  value = aws_cloudwatch_event_rule.clip_ssmlambda_trigger_rule.arn
+}
+
+
+modules/eventbridge/variables.tf
+
+variable "eventbridge_name" {
+  description = "Name of the EventBridge rule for ASG"
+  type        = string
+}
+
+variable "asg_name_prefix" {
+  description = "Prefix of the ASG names to trigger the EventBridge rule"
+  type        = list(string)
+}
+
+variable "lambda_arn" {
+  description = "ARN of the Lambda function to be triggered"
+  type        = string
+}
+
+variable "cloudwatch_status_rule" {
+  description = "EventBridge rule for CloudWatch Alarm State Change"
+  type = object({
+    name          = string
+    alarm_prefixes = list(string)
+  })
+}
+
+variable "clip_ssmlambda_trigger_rule" {
+  description = "EventBridge rule for SSM Lambda trigger"
+  type = object({
+    name          = string
+    alarm_prefixes = list(string)
+    target_lambda = string
+    input_transformer = map(string)
+  })
+}
+
+
+
+
 
 
 
