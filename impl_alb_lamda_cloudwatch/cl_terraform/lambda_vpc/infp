@@ -1,0 +1,16 @@
+all this components should be in vpc
+========================
+
+Add VPC and update components for VPC support
+
+terraform/modules/vpc/main.tf
+terraform/modules/vpc/variables.tf
+terraform/modules/vpc/outputs.tf
+terraform/variables.tf
+terraform/modules/lambda/variables.tf
+terraform/modules/lambda/main.tf
+terraform/main.tf
+terraform/modules/iam/main.tf
+
+vpc attatchment -> new module attatch
+===================
