@@ -2,6 +2,8 @@ provider "aws" {
   region = "us-east-1"
 }
 
+###  Compress-Archive -Path lambda_b.py -DestinationPath lambda_b.zip -Force
+
 resource "aws_iam_role" "lambda_role" {
   name = "lambda_basic_execution"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
