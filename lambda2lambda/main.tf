@@ -39,9 +39,6 @@ module "lambda_a" {
   role_arn               = aws_iam_role.lambda_role.arn
   handler                = "lambda_a.lambda_handler"
   runtime                = "python3.9"
-  environment_variables  = {
-    LAMBDA_B_ARN = module.lambda_b.lambda_function_arn
-  }
 }
 
 resource "aws_lambda_permission" "allow_a_to_invoke_b" {
