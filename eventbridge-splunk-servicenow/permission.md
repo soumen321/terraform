@@ -61,6 +61,63 @@ locals {
   }
 }
 
+
+################################################################################
+# Generate CloudWatch Policies with Individual Lambda Log Group ARNs
+################################################################################
+
+locals {
+  generate_cloudwatch_policy = {
+    splunk_create_query = jsonencode(merge(
+      local.lambda_cloudwatch_policy_template,
+      {
+        Statement = [
+          merge(
+            local.lambda_cloudwatch_policy_template.Statement[0],
+            {
+              Resource = [
+                "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-${var.environment}-${var.lambda_function_generate_splunk_query_name}:*"
+              ]
+            }
+          )
+        ]
+      }
+    ))
+    splunk_query_run_parse = jsonencode(merge(
+      local.lambda_cloudwatch_policy_template,
+      {
+        Statement = [
+          merge(
+            local.lambda_cloudwatch_policy_template.Statement[0],
+            {
+              Resource = [
+                "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-${var.environment}-${var.lambda_function_run_splunk_query_parse_name}:*"
+              ]
+            }
+          )
+        ]
+      }
+    ))
+    servicenow = jsonencode(merge(
+      local.lambda_cloudwatch_policy_template,
+      {
+        Statement = [
+          merge(
+            local.lambda_cloudwatch_policy_template.Statement[0],
+            {
+              Resource = [
+                "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-${var.environment}-${var.lambda_function_create_servicenow_ticket_name}:*"
+              ]
+            }
+          )
+        ]
+      }
+    ))
+  }
+}
+
+
+
 ################################################################################
 # Combined IAM Policies Map for All Lambda Functions
 ################################################################################
